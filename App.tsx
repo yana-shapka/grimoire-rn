@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { View, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar, useColorScheme } from 'react-native';
-import TabBar from './components/TabBar';
-import CardGrid from './components/CardGrid';
-import CardDetails from './components/CardDetails';
-import FilterRow from './components/FilterRow';
+
+import CustomButton from './components/CustomButton';
 import Badge from './components/Badge';
+import CustomInput from './components/TextInput';
+import SearchBar from './components/SearchBar';
+import TabBar from './components/TabBar';
+import CardItem from './components/CardItem';
+import CardDetails from './components/CardDetails';
+import ManaColor from './components/ManaColor';
+import FilterRow from './components/FilterRow';
+import FilterCounter from './components/FilterCounter';
+import PaginationDots from './components/PaginationDots';
 import UserAvatar from './components/UserAvatar';
 
 const MOCK_CARD = {
@@ -20,10 +27,12 @@ const MOCK_CARD = {
   imageUrl: 'https://cards.scryfall.io/normal/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg',
 };
 
+const SECTION = ({ title }: { title: string }) => (
+  <Text style={styles.section}>{title}</Text>
+);
+
 function AppContent() {
   const safeAreaInsets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
   const [selectedCard, setSelectedCard] = useState(null);
 
   if (selectedCard) {
@@ -39,30 +48,51 @@ function AppContent() {
 
   return (
     <View style={[styles.container, { paddingTop: safeAreaInsets.top }]}>
-      {/* В landscape — горизонтальний layout */}
-      <View style={[styles.main, isLandscape && styles.mainLandscape]}>
-        <ScrollView style={isLandscape ? styles.sidePanel : styles.topPanel}>
-          <UserAvatar onEditPress={() => console.log('edit pressed')} />
-          <View style={styles.filters}>
-            <FilterRow label="Type" count={1} />
-            <FilterRow label="Rarity" count={0}>
-              {null}
-            </FilterRow>
-            <FilterRow label="Color" count={1}>
-              <Badge label="BLACK" />
-              <Badge label="WHITE" />
-              <Badge label="GREEN" />
-              <Badge label="BLUE" />
-              <Badge label="RED" />
-            </FilterRow>
-          </View>
-        </ScrollView>
+      <ScrollView contentContainerStyle={styles.content}>
+        <SECTION title="CustomButton" />
+        <CustomButton title="Login" onPress={() => {}} />
+        <CustomButton title="Disabled" onPress={() => {}} disabled />
 
-        <View style={styles.gridContainer}>
-          <CardGrid onCardPress={() => setSelectedCard(MOCK_CARD)} />
+        <SECTION title="Badge" />
+        <View style={styles.row}>
+          <Badge label="CREATURE" />
+          <Badge label="COMMON" />
+          <Badge label="BLACK" />
         </View>
-      </View>
 
+        <SECTION title="CustomInput" />
+        <CustomInput placeholder="Email Address" />
+        <CustomInput placeholder="Password" secureText={true} />
+
+        <SECTION title="SearchBar" />
+        <SearchBar placeholder="Search cards..." />
+
+        <SECTION title="ManaColor" />
+        <ManaColor colors={['RED', 'GREEN', 'BLUE']} />
+
+        <SECTION title="FilterCounter" />
+        <FilterCounter count={3} />
+
+        <SECTION title="FilterRow" />
+        <FilterRow label="Type" count={1} />
+        <FilterRow label="Color" count={0}>
+          <Badge label="BLACK" />
+          <Badge label="RED" />
+        </FilterRow>
+
+        <SECTION title="PaginationDots" />
+        <PaginationDots total={3} active={0} />
+
+        <SECTION title="UserAvatar" />
+        <UserAvatar onEditPress={() => {}} />
+
+        <SECTION title="CardItem (натисни щоб побачити CardDetails)" />
+        <CardItem
+          imageUrl={MOCK_CARD.imageUrl}
+          onPress={() => setSelectedCard(MOCK_CARD)}
+          numColumns={1}
+        />
+      </ScrollView>
       <TabBar />
     </View>
   );
@@ -83,28 +113,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  main: {
-    flex: 1,
-    flexDirection: 'column',
+  content: {
+    padding: 20,
+    gap: 12,
   },
-  // В landscape — фільтри зліва, картки справа
-  mainLandscape: {
+  section: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#AAAAAA',
+    marginTop: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  row: {
     flexDirection: 'row',
-  },
-  sidePanel: {
-    width: 200,
-    borderRightWidth: 1,
-    borderRightColor: '#F0EEF8',
-  },
-  topPanel: {
-    maxHeight: 200,
-  },
-  filters: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  gridContainer: {
-    flex: 1,
+    gap: 8,
   },
 });
 
