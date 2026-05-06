@@ -34,8 +34,8 @@
 		<true/>
 		<key>UIAppFonts</key>
 		<array>
-    	<string>Feather.ttf</string>
-    	<string>MaterialIcons.ttf</string>
+			<string>Feather.ttf</string>
+			<string>MaterialIcons.ttf</string>
 		</array>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>

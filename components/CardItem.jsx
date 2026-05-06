@@ -1,19 +1,10 @@
 import React from 'react';
-import {
-  Image,
-  TouchableOpacity,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { Image, TouchableOpacity, StyleSheet } from 'react-native';
 
-const CardItem = ({ imageUrl, onPress, numColumns = 2 }) => {
-  const { width } = useWindowDimensions();
-
-  const cardWidth = numColumns === 1 ? width - 32 : (width - 48) / 2;
-
+const CardItem = ({ imageUrl, onPress, width }) => {
   return (
     <TouchableOpacity
-      style={[styles.card, { width: cardWidth }]}
+      style={[styles.card, { width }]}
       onPress={onPress}
       activeOpacity={0.9}
     >
