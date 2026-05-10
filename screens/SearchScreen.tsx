@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,71 +14,76 @@ import SearchBar from '../components/SearchBar';
 import FilterCounter from '../components/FilterCounter';
 import { openFilterDrawer } from '../navigation/SearchDrawerNavigator';
 import { filterState } from './FilterScreen';
+import { searchCards } from '../api';
 
 const COLORS = {
   primary: '#6750A4',
   text: '#1A1A1A',
+  textSecondary: '#666666',
   border: '#F0EEF8',
   background: '#FFFFFF',
+  error: '#D3202A',
 };
-
-const MOCK_CARDS = [
-  {
-    id: '1',
-    name: 'Lightning Bolt',
-    type: 'INSTANT',
-    rarity: 'COMMON',
-    colors: ['RED'],
-    isFavorite: false,
-    imageUrl: 'https://cards.scryfall.io/normal/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg',
-  },
-  {
-    id: '2',
-    name: 'Arbor Elf',
-    type: 'CREATURE',
-    rarity: 'COMMON',
-    colors: ['GREEN'],
-    isFavorite: false,
-    imageUrl: 'https://cards.scryfall.io/normal/front/6/e/6ebc66c2-cd85-4124-bba0-fb4cb769ca3b.jpg',
-  },
-  {
-    id: '3',
-    name: 'Ancestral Recall',
-    type: 'INSTANT',
-    rarity: 'RARE',
-    colors: ['BLUE'],
-    isFavorite: false,
-    imageUrl: 'https://cards.scryfall.io/normal/front/2/e/2e4e2dd0-b3bc-4b50-96d1-9b5a7b41c7ee.jpg',
-  },
-  {
-    id: '4',
-    name: 'Reanimate',
-    type: 'SORCERY',
-    rarity: 'UNCOMMON',
-    colors: ['BLACK'],
-    isFavorite: false,
-    imageUrl: 'https://cards.scryfall.io/normal/front/a/0/a07a2585-a0f7-4148-a8b3-593a6a4c0c16.jpg',
-  },
-];
 
 const SORT_OPTIONS = ['Name A→Z', 'Name Z→A', 'Rarity'];
 
-const SearchScreen = () => {
+/**
+ * SearchScreen — екран пошуку карток.
+ * При відкритті екрану список порожній.
+ * Пошук відбувається тільки після натискання кнопки Search.
+ * Підтримує фільтрацію через Drawer і сортування.
+ * filterVersion — проп від SearchDrawerNavigator,
+ * збільшується коли юзер натискає Apply Filters,
+ * що викликає перерендер і застосування нових фільтрів.
+ */
+const SearchScreen = ({ filterVersion = 0 }: { filterVersion?: number }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
   const [sortVisible, setSortVisible] = useState(false);
   const [sortBy, setSortBy] = useState('');
   const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    forceUpdate(n => n + 1);
+  }, [filterVersion]);
+
+  const handleChangeText = (text: string) => {
+    setQuery(text);
+  };
+
+  /**
+   * handleSubmit — викликається при натисканні кнопки Search.
+   * Якщо запит порожній — нічого не робимо.
+   * Якщо є текст — шукає за назвою через API.
+   */
+  const handleSubmit = async () => {
+    if (query.trim().length === 0) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await searchCards(query.trim());
+      setCards(data);
+    } catch (err) {
+      setError('Failed to load cards. Please try again.');
+      console.error('SearchScreen error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeFilterCount =
     filterState.types.length +
     filterState.rarities.length +
     filterState.colors.length;
 
-  const filteredCards = MOCK_CARDS
-    .filter(card => card.name.toLowerCase().includes(query.toLowerCase()))
+  // Застосовуємо фільтри і сортування до завантажених карток
+  const filteredCards = cards
     .filter(card => filterState.types.length === 0 || filterState.types.includes(card.type))
     .filter(card => filterState.rarities.length === 0 || filterState.rarities.includes(card.rarity))
     .filter(card => filterState.colors.length === 0 || card.colors.some(c => filterState.colors.includes(c)))
@@ -80,7 +91,7 @@ const SearchScreen = () => {
       if (sortBy === 'Name A→Z') return a.name.localeCompare(b.name);
       if (sortBy === 'Name Z→A') return b.name.localeCompare(a.name);
       if (sortBy === 'Rarity') {
-        const order = ['COMMON', 'UNCOMMON', 'RARE', 'MYTHIC'];
+        const order = ['MYTHIC', 'RARE', 'UNCOMMON', 'COMMON'];
         return order.indexOf(a.rarity) - order.indexOf(b.rarity);
       }
       return 0;
@@ -89,7 +100,11 @@ const SearchScreen = () => {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.searchContainer}>
-        <SearchBar placeholder="Search cards..." onChangeText={setQuery} />
+        <SearchBar
+          placeholder="Search cards..."
+          onChangeText={handleChangeText}
+          onSubmit={handleSubmit}
+        />
       </View>
 
       <View style={styles.controlsRow}>
@@ -104,10 +119,7 @@ const SearchScreen = () => {
 
         <TouchableOpacity
           style={styles.controlButton}
-          onPress={() => {
-            openFilterDrawer();
-            forceUpdate(n => n + 1);
-          }}
+          onPress={() => openFilterDrawer()}
           activeOpacity={0.7}
         >
           <Text style={styles.controlText}>≡ Filter</Text>
@@ -134,10 +146,33 @@ const SearchScreen = () => {
         </View>
       )}
 
-      <CardGrid
-        cards={filteredCards}
-        onCardPress={(card) => navigation.navigate('CardDetails', { card })}
-      />
+      {loading && (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      )}
+
+      {error && !loading && (
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.retryText} onPress={handleSubmit}>
+            Tap to retry
+          </Text>
+        </View>
+      )}
+
+      {!loading && !error && cards.length === 0 && (
+        <View style={styles.centered}>
+          <Text style={styles.emptyText}>Search for cards by name</Text>
+        </View>
+      )}
+
+      {!loading && !error && filteredCards.length > 0 && (
+        <CardGrid
+          cards={filteredCards}
+          onCardPress={(card) => navigation.navigate('CardDetails', { card })}
+        />
+      )}
     </View>
   );
 };
@@ -198,6 +233,29 @@ const styles = StyleSheet.create({
   sortOptionActive: {
     color: COLORS.primary,
     fontWeight: '600',
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 15,
+    color: COLORS.error,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  retryText: {
+    fontSize: 15,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  emptyText: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
 });
 

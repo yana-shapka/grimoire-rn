@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Animated,
@@ -21,6 +21,7 @@ const SearchDrawerNavigator = () => {
   const translateX = useRef(new Animated.Value(drawerWidth)).current;
   const isOpen = useRef(false);
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const [filterVersion, setFilterVersion] = useState(0);
 
   const openDrawer = () => {
     isOpen.current = true;
@@ -53,6 +54,10 @@ const SearchDrawerNavigator = () => {
     ]).start(() => {
       isOpen.current = false;
     });
+  };
+
+  const handleApply = () => {
+    setFilterVersion(v => v + 1);
   };
 
   openFilterDrawer = openDrawer;
@@ -90,7 +95,7 @@ const SearchDrawerNavigator = () => {
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      <SearchScreen />
+      <SearchScreen filterVersion={filterVersion} />
 
       <Animated.View
         style={[styles.overlay, { opacity: overlayOpacity }]}
@@ -107,7 +112,7 @@ const SearchDrawerNavigator = () => {
           { width: drawerWidth, transform: [{ translateX }] },
         ]}
       >
-        <FilterScreen onClose={closeDrawer} />
+        <FilterScreen onClose={closeDrawer} onApply={handleApply} />
       </Animated.View>
     </View>
   );

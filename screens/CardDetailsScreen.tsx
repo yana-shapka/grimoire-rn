@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Badge from '../components/Badge';
 import ManaColor from '../components/ManaColor';
 import CustomButton from '../components/CustomButton';
+import { fetchCardById } from '../api';
 
 const COLORS = {
   text: '#1A1A1A',
@@ -20,12 +22,13 @@ const COLORS = {
   background: '#FFFFFF',
   border: '#F0EEF8',
   error: '#D3202A',
+  primary: '#6750A4',
 };
 
 /**
  * CardDetailsScreen — екран деталей картки.
- * Отримує дані картки через route.params.card
- * переданий з HomeScreen, SearchScreen або FavoritesScreen.
+ * Отримує базові дані картки через route.params.card,
+ * але також завантажує повні деталі через API за card.id.
  *
  * Обробляє випадок коли card не передано —
  * показує екран помилки з кнопкою повернення.
@@ -33,16 +36,45 @@ const COLORS = {
 const CardDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const insets = useSafeAreaInsets();
 
-  const card = route.params?.card;
+  const initialCard = route.params?.card;
+  console.log('card colors:', initialCard?.colors);
 
-  const [isFavorite, setIsFavorite] = useState(card?.isFavorite || false);
+  // Починаємо з даних переданих через navigate,
+  // потім оновлюємо повними даними з API
+  const [card, setCard] = useState(initialCard);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(initialCard?.isFavorite || false);
 
-  // Обробка помилки — якщо card не передано
-  if (!card) {
+  /**
+   * loadCardDetails — завантажує повні деталі картки за id.
+   * Викликається при монтуванні якщо є initialCard.id.
+   */
+  const loadCardDetails = async () => {
+    if (!initialCard?.id) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const fullCard = await fetchCardById(initialCard.id);
+      setCard(fullCard);
+      setIsFavorite(fullCard.isFavorite || false);
+    } catch (err) {
+      console.error('CardDetailsScreen error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCardDetails();
+  }, []);
+
+  // Обробка помилки — якщо card не передано взагалі
+  if (!initialCard) {
     return (
-      <View style={[styles.container, styles.errorContainer]}>
+      <View style={styles.errorContainer}>
         <View style={styles.errorContent}>
           <Text style={styles.errorTitle}>Card not found</Text>
           <Text style={styles.errorSubtitle}>
@@ -60,31 +92,52 @@ const CardDetailsScreen = () => {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Image
-          source={{ uri: card.imageUrl }}
-          style={styles.image}
-          resizeMode="contain"
-        />
+
+        {card?.imageUrl ? (
+          <Image
+            source={{ uri: card.imageUrl }}
+            style={styles.image}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.imagePlaceholderText}>No image</Text>
+          </View>
+        )}
 
         <View style={styles.info}>
-          <Text style={styles.description}>{card.description}</Text>
+
+  
+          {loading && (
+            <ActivityIndicator
+              size="small"
+              color={COLORS.primary}
+              style={styles.loader}
+            />
+          )}
+
+          <Text style={styles.description}>
+            {card?.description || 'No description available.'}
+          </Text>
 
           <View style={styles.row}>
             <Text style={styles.label}>Type</Text>
-            <Badge label={card.type || 'CREATURE'} />
+            <Badge label={card?.type || 'UNKNOWN'} />
           </View>
 
           <View style={styles.row}>
             <Text style={styles.label}>Rarity</Text>
-            <Badge label={card.rarity || 'COMMON'} />
+            <Badge label={card?.rarity || 'COMMON'} />
           </View>
 
           <View style={styles.row}>
             <Text style={styles.label}>Color</Text>
-            <ManaColor colors={card.colors || ['GREEN']} />
+            <ManaColor colors={card?.colors || ['COLORLESS']} />
           </View>
+
         </View>
       </ScrollView>
+
 
       <View style={styles.buttonContainer}>
         <CustomButton
@@ -103,6 +156,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
   errorContent: {
     flex: 1,
@@ -125,11 +179,26 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 320,
-    marginTop: 32,
+    marginTop: 16,
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: 320,
+    marginTop: 16,
+    backgroundColor: '#F0EEF8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePlaceholderText: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
   },
   info: {
     padding: 20,
     gap: 16,
+  },
+  loader: {
+    alignSelf: 'center',
   },
   description: {
     fontSize: 15,

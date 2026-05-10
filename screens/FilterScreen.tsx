@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FilterCounter from '../components/FilterCounter';
+import CustomButton from '../components/CustomButton';
 
 const COLORS = {
   primary: '#6750A4',
@@ -81,7 +82,10 @@ const FilterSection = ({ label, count, items, selected, onToggle }: {
   );
 };
 
-const FilterScreen = ({ onClose }: { onClose?: () => void }) => {
+const FilterScreen = ({ onClose, onApply }: {
+  onClose?: () => void;
+  onApply?: () => void;
+}) => {
   const insets = useSafeAreaInsets();
   const [selectedTypes, setSelectedTypes] = useState<string[]>(filterState.types);
   const [selectedRarities, setSelectedRarities] = useState<string[]>(filterState.rarities);
@@ -109,6 +113,11 @@ const FilterScreen = ({ onClose }: { onClose?: () => void }) => {
     filterState.colors = [];
   };
 
+  const handleApply = () => {
+    if (onApply) onApply();
+    if (onClose) onClose();
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -121,7 +130,7 @@ const FilterScreen = ({ onClose }: { onClose?: () => void }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView>
+      <ScrollView style={styles.scroll}>
         <FilterSection
           label="Type"
           count={selectedTypes.length}
@@ -144,6 +153,13 @@ const FilterScreen = ({ onClose }: { onClose?: () => void }) => {
           onToggle={(item) => toggle(item, selectedColors, setSelectedColors, 'colors')}
         />
       </ScrollView>
+
+      <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 16 }]}>
+        <CustomButton
+          title="Apply Filters"
+          onPress={handleApply}
+        />
+      </View>
     </View>
   );
 };
@@ -170,6 +186,9 @@ const styles = StyleSheet.create({
   headerAction: {
     fontSize: 15,
     color: COLORS.primary,
+  },
+  scroll: {
+    flex: 1,
   },
   section: {
     borderBottomWidth: 1,
@@ -212,6 +231,9 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: COLORS.background,
+  },
+  buttonContainer: {
+    padding: 16,
   },
 });
 

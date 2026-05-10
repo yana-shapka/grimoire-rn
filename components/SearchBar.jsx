@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, Platform } from 'react-native';
+import { View, TextInput, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 
 const COLORS = {
   background: '#F7F2FA',
@@ -8,7 +8,7 @@ const COLORS = {
   icon: '#6750A4',
 };
 
-const SearchBar = ({ placeholder = 'Search...', onChangeText }) => {
+const SearchBar = ({ placeholder = 'Search...', onChangeText, onSubmit }) => {
   const [query, setQuery] = useState('');
 
   const handleChange = (text) => {
@@ -26,7 +26,17 @@ const SearchBar = ({ placeholder = 'Search...', onChangeText }) => {
         value={query}
         onChangeText={handleChange}
         returnKeyType="search"
+        onSubmitEditing={onSubmit}
       />
+      {query.length > 0 && (
+        <TouchableOpacity
+          onPress={onSubmit}
+          activeOpacity={0.7}
+          style={styles.searchButton}
+        >
+          <Text style={styles.searchButtonText}>Search</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -60,6 +70,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: COLORS.text,
+  },
+  searchButton: {
+    marginLeft: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: COLORS.icon,
+    borderRadius: 10,
+  },
+  searchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 
