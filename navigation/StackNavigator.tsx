@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 
+import { useAuth } from '../context/AuthContext';
 import TabNavigator from './TabNavigator';
 import CardDetailsScreen from '../screens/CardDetailsScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -25,46 +26,52 @@ const Stack = createStackNavigator();
 
 /**
  * StackNavigator — кореневий навігатор додатку.
- * Відповідає за лінійні переходи між основними розділами:
- * Onboarding → Login → Main (таби) → CardDetails
  *
- * headerShown: false — приховуємо стандартний заголовок,
- * бо кожен екран має власний кастомний header.
- * CardDetails — виняток, має стилізований header через options.
+ * Читає isLoggedIn з AuthContext щоб визначити початковий екран:
+ *   - isLoggedIn: true  → показує Main (таби)
+ *   - isLoggedIn: false → показує Onboarding → Login
+ *
+ * Це замінює попередній підхід де logout робив navigation.reset вручну.
+ * Тепер logout() в AuthContext скидає isLoggedIn → навігатор
+ * автоматично перемикається на Login без явного navigation.reset.
  */
 const StackNavigator = () => {
+  const { isLoggedIn } = useAuth();
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name={SCREENS.MAIN} component={TabNavigator} />
-      <Stack.Screen name={SCREENS.ONBOARDING} component={OnboardingScreen} />
-      <Stack.Screen name={SCREENS.LOGIN} component={LoginScreen} />
-
-      {/*
-       * CardDetails має кастомний header:
-       * - власний заголовок з назвою картки
-       * - кастомна кнопка Back
-       * - стилізація під дизайн додатку
-       */}
-      <Stack.Screen
-        name={SCREENS.CARD_DETAILS}
-        component={CardDetailsScreen}
-        options={({ route, navigation }) => ({
-          headerShown: true,
-          headerTitle: route.params?.card?.name || 'Card Details',
-          headerTitleStyle: styles.headerTitle,
-          headerStyle: styles.header,
-          headerTintColor: '#6B4EFF',
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            >
-              <Text style={styles.backText}>{'<'}</Text>
-            </TouchableOpacity>
-          ),
-        })}
-      />
+      {isLoggedIn ? (
+        // Залогінений юзер бачить основний додаток
+        <>
+          <Stack.Screen name={SCREENS.MAIN} component={TabNavigator} />
+          <Stack.Screen
+            name={SCREENS.CARD_DETAILS}
+            component={CardDetailsScreen}
+            options={({ route, navigation }) => ({
+              headerShown: true,
+              headerTitle: route.params?.card?.name || 'Card Details',
+              headerTitleStyle: styles.headerTitle,
+              headerStyle: styles.header,
+              headerTintColor: '#6B4EFF',
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={styles.backButton}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                  <Text style={styles.backText}>{'<'}</Text>
+                </TouchableOpacity>
+              ),
+            })}
+          />
+        </>
+      ) : (
+        // Незалогінений юзер проходить онбординг → логін
+        <>
+          <Stack.Screen name={SCREENS.ONBOARDING} component={OnboardingScreen} />
+          <Stack.Screen name={SCREENS.LOGIN} component={LoginScreen} />
+        </>
+      )}
     </Stack.Navigator>
   );
 };

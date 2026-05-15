@@ -12,8 +12,9 @@ const EyeIcon = ({ visible }) => (
   <View style={[styles.eyeIcon, !visible && styles.eyeIconHidden]} />
 );
 
-const CustomInput = ({ placeholder, secureText = false }) => {
-  const [isSecure, setIsSecure] = useState(secureText);
+
+const CustomInput = ({ placeholder, secureTextEntry = false, ...rest }) => {
+  const [isSecure, setIsSecure] = useState(secureTextEntry);
 
   return (
     <View style={styles.container}>
@@ -22,8 +23,9 @@ const CustomInput = ({ placeholder, secureText = false }) => {
         placeholder={placeholder}
         placeholderTextColor={COLORS.placeholder}
         secureTextEntry={isSecure}
+        {...rest}
       />
-      {secureText && (
+      {secureTextEntry && (
         <TouchableOpacity
           style={styles.eyeButton}
           onPress={() => setIsSecure(!isSecure)}
