@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,12 +29,22 @@ const SORT_OPTIONS = ['Name A→Z', 'Name Z→A', 'Rarity'];
 
 /**
  * SearchScreen — екран пошуку карток.
- * При відкритті екрану список порожній.
- * Пошук відбувається тільки після натискання кнопки Search.
- * Підтримує фільтрацію через Drawer і сортування.
- * filterVersion — проп від SearchDrawerNavigator,
- * збільшується коли юзер натискає Apply Filters,
- * що викликає перерендер і застосування нових фільтрів.
+ *
+ * Оптимізація (HW7 — завдання 3):
+ *
+ * 1. handleCardPress — useCallback зі стабільним референсом.
+ *    Без нього: нова функція при кожному рендері → CardGrid
+ *    отримує новий prop → React.memo на CartItem не спрацьовує.
+ *
+ * 2. filteredCards — useMemo.
+ *    Фільтрація + сортування масиву перераховується тільки коли
+ *    змінились cards, sortBy або filterVersion.
+ *    Без memo: перераховується при будь-якому setState в компоненті
+ *    (наприклад, при відкритті sort dropdown).
+ *
+ * 3. forceUpdate видалено — filterVersion як залежність у useMemo
+ *    замінює його повністю. При зміні filterVersion memo інвалідується
+ *    і filteredCards перераховується з актуальним filterState.
  */
 const SearchScreen = ({ filterVersion = 0 }: { filterVersion?: number }) => {
   const navigation = useNavigation();
@@ -46,20 +56,13 @@ const SearchScreen = ({ filterVersion = 0 }: { filterVersion?: number }) => {
   const [query, setQuery] = useState('');
   const [sortVisible, setSortVisible] = useState(false);
   const [sortBy, setSortBy] = useState('');
-  const [, forceUpdate] = useState(0);
-
-  useEffect(() => {
-    forceUpdate(n => n + 1);
-  }, [filterVersion]);
 
   const handleChangeText = (text: string) => {
     setQuery(text);
   };
 
   /**
-   * handleSubmit — викликається при натисканні кнопки Search.
-   * Якщо запит порожній — нічого не робимо.
-   * Якщо є текст — шукає за назвою через API.
+   * handleSubmit — пошук за назвою при натисканні кнопки Search.
    */
   const handleSubmit = async () => {
     if (query.trim().length === 0) return;
@@ -77,25 +80,48 @@ const SearchScreen = ({ filterVersion = 0 }: { filterVersion?: number }) => {
     }
   };
 
+  /**
+   * handleCardPress — стабілізований через useCallback.
+   * Змінюється тільки якщо змінився navigation.
+   * Передається в CardGrid → далі в CardItem через renderItem.
+   */
+  const handleCardPress = useCallback((card) => {
+    navigation.navigate('CardDetails', { card });
+  }, [navigation]);
+
   const activeFilterCount =
     filterState.types.length +
     filterState.rarities.length +
     filterState.colors.length;
 
-  // Застосовуємо фільтри і сортування до завантажених карток
-  const filteredCards = cards
-    .filter(card => filterState.types.length === 0 || filterState.types.includes(card.type))
-    .filter(card => filterState.rarities.length === 0 || filterState.rarities.includes(card.rarity))
-    .filter(card => filterState.colors.length === 0 || card.colors.some(c => filterState.colors.includes(c)))
-    .sort((a, b) => {
-      if (sortBy === 'Name A→Z') return a.name.localeCompare(b.name);
-      if (sortBy === 'Name Z→A') return b.name.localeCompare(a.name);
-      if (sortBy === 'Rarity') {
-        const order = ['MYTHIC', 'RARE', 'UNCOMMON', 'COMMON'];
-        return order.indexOf(a.rarity) - order.indexOf(b.rarity);
-      }
-      return 0;
-    });
+  /**
+   * filteredCards — мемоізована фільтрація і сортування.
+   * Перераховується тільки при зміні cards, sortBy або filterVersion.
+   * filterVersion використовується як сигнал про зміну filterState
+   * (мутабельний об'єкт не може бути залежністю напряму).
+   */
+  const filteredCards = useMemo(() => {
+    return cards
+      .filter(card =>
+        filterState.types.length === 0 || filterState.types.includes(card.type)
+      )
+      .filter(card =>
+        filterState.rarities.length === 0 || filterState.rarities.includes(card.rarity)
+      )
+      .filter(card =>
+        filterState.colors.length === 0 ||
+        card.colors.some(c => filterState.colors.includes(c))
+      )
+      .sort((a, b) => {
+        if (sortBy === 'Name A→Z') return a.name.localeCompare(b.name);
+        if (sortBy === 'Name Z→A') return b.name.localeCompare(a.name);
+        if (sortBy === 'Rarity') {
+          const order = ['MYTHIC', 'RARE', 'UNCOMMON', 'COMMON'];
+          return order.indexOf(a.rarity) - order.indexOf(b.rarity);
+        }
+        return 0;
+      });
+  }, [cards, sortBy, filterVersion]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -170,7 +196,7 @@ const SearchScreen = ({ filterVersion = 0 }: { filterVersion?: number }) => {
       {!loading && !error && filteredCards.length > 0 && (
         <CardGrid
           cards={filteredCards}
-          onCardPress={(card) => navigation.navigate('CardDetails', { card })}
+          onCardPress={handleCardPress}
         />
       )}
     </View>

@@ -5,10 +5,18 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FilterCounter from '../components/FilterCounter';
 import CustomButton from '../components/CustomButton';
+
+// Android потребує явного увімкнення LayoutAnimation
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 
 const COLORS = {
   primary: '#6750A4',
@@ -44,6 +52,16 @@ const Chip = ({ label, selected, onPress }: {
   </TouchableOpacity>
 );
 
+/**
+ * FilterSection — секція фільтрів з accordion-анімацією.
+ *
+ * Анімація реалізована через LayoutAnimation (HW7 — завдання 2).
+ * При кожному відкритті/закритті викликається configureNext —
+ * React Native автоматично анімує наступну зміну layout.
+ *
+ * Примітка: на Android з Fabric (New Architecture) анімація може не
+ * спрацювати — це відома обмеженість LayoutAnimation на новій архітектурі.
+ */
 const FilterSection = ({ label, count, items, selected, onToggle }: {
   label: string;
   count: number;
@@ -53,11 +71,30 @@ const FilterSection = ({ label, count, items, selected, onToggle }: {
 }) => {
   const [expanded, setExpanded] = useState(false);
 
+  const handleToggle = () => {
+    LayoutAnimation.configureNext({
+      duration: 400,
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      update: {
+        type: LayoutAnimation.Types.spring,
+        springDamping: 0.8,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+    });
+    setExpanded(prev => !prev);
+  };
+
   return (
     <View style={styles.section}>
       <TouchableOpacity
         style={styles.sectionHeader}
-        onPress={() => setExpanded(!expanded)}
+        onPress={handleToggle}
         activeOpacity={0.7}
       >
         <Text style={styles.sectionLabel}>{label}</Text>
@@ -66,6 +103,8 @@ const FilterSection = ({ label, count, items, selected, onToggle }: {
           : <Text style={styles.arrow}>{expanded ? '∧' : '∨'}</Text>
         }
       </TouchableOpacity>
+
+      {/* Блок чіпів з'являється/зникає з анімацією через LayoutAnimation */}
       {expanded && (
         <View style={styles.chips}>
           {items.map(item => (
